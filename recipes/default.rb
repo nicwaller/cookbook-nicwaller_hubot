@@ -4,91 +4,19 @@
 #
 
 include_recipe 'git::default'
-include_recipe 'nodejs'
+include_recipe 'nodejs::default'
 
-hubot_user = 'hubot'
-hubot_group = 'hubot'
-hubot_dir = '/opt/hubot'
-
-user hubot_user do
-  comment 'Hubot User'
-  home hubot_dir
+# Strangely enough, the nodejs cookbook fails to install npm on Ubuntu 16.04
+if node['platform'] == 'ubuntu' && node['platform_version'] == '16.04'
+  package 'npm'
+else
+  include_recipe 'nodejs::npm'
 end
 
-group hubot_group do
-  members [hubot_user]
-end
-
-directory hubot_dir do
-  owner hubot_user
-  group hubot_group
-  recursive false
-  mode  0755
-end
-
-git hubot_dir do
-  repository 'https://github.com/github/hubot.git'
-  revision node[cookbook_name]['hubot_version']
-  action :checkout
-  notifies :run, 'execute[build and install hubot]', :immediately
-end
-
-# Amazingly, the Chef 'git' resource allows us to stomp over any files we like, and it will still update the rest
-
-execute 'build and install hubot' do
-  command <<-EOH
-npm install
-bin/hubot -c #{hubot_dir}
-chown #{hubot_user}:#{hubot_group} -R #{hubot_dir}
-chmod 0755 #{hubot_dir}/bin/hubot
-  EOH
-  cwd hubot_dir
-  environment(
-    'PATH' => "#{hubot_dir}/node_modules/.bin:#{ENV['PATH']}"
-  )
-  action :nothing
-end
-
-# We could specify a version constraint here... or just let npm try to work it out. ¯\_(ツ)_/¯
-external_scripts = [
-  'hubot-ambush',
-  'hubot-calculator',
-  'hubot-help',
-  'hubot-leaderboard',
-  'hubot-pager-me',
-  'hubot-commit-streak',
-  'hubot-thecat',
-  'hubot-rss-reader',
-  'hubot-google-images',
-  'hubot-google-translate',
-  'hubot-google-hangouts',
-  'hubot-pugme',
-  'hubot-rules',
-  'hubot-slack',
-  'hubot-streetfood',
-  'hubot-google',
-  'hubot-xkcd',
-  'hubot-maps',
-]
-
-template "#{hubot_dir}/package.json" do
-  source 'package.json.erb'
-  owner hubot_user
-  group hubot_group
-	mode 0444
-  variables ({
-    'version' => node[cookbook_name]['hubot_version'],
-    'dependencies' => external_scripts.map { |package| [package, '*'] }.to_h,
-  })
-  notifies :run, 'execute[npm install]', :immediately
-end
-
-file "#{hubot_dir}/external-scripts.json" do
-  owner hubot_user
-  group hubot_group
-  mode 0444
-  content external_scripts.to_json
-  notifies :restart, 'service[hubot]', :delayed
+# Unconfirmed: Ubuntu 12.04 installs node 0.10 which is too old to run Hubot.
+# Too bad though, because it takes a LOOOONG time to compile nodejs. (like half an hour)
+if node['platform'] == 'ubuntu' && node['platform_version'] == '14.04' and node['nodejs']['install_method'] == 'package'
+  raise 'The nodejs package provided in 14.04 is too old to run HipChat. Please install from source instead.'
 end
 
 # TODO: isn't there some other way to ensure coffee-script is available?
@@ -96,37 +24,19 @@ execute 'hubot_coffee_script' do
   command 'npm install -g coffee-script'
 end
 
-# Now we re-run npm install to pick up the additional dependencies we've requested
-execute 'npm install' do
-  command 'npm install'
-  cwd hubot_dir
-  user hubot_user
-  group hubot_group
-  environment(
-    'USER' => hubot_user,
-    'HOME' => hubot_dir,
-  )
-  action :nothing
-  notifies :restart, 'service[hubot]', :delayed
-end
-
-hubot_environment = {
-  'HUBOT_WEATHER_CELSIUS' => 'true',
-  'HUBOT_SLACK_TOKEN' => 'xoxb-YOUR-TOKEN-HERE',
+# We could specify a version constraint here... or just let npm try to work it out. ¯\_(ツ)_/¯
+# It is an error to include hubot-hipchat or hubot-slack in external_scripts. Don't do it. It's only a dependency.
+# todo: throw an exception if somebody tries to do that
+external_scripts = {
+  # 'hubot-hipchat' => '2.12.0', # This crashes
+  # 'hubot-slack' => '4.2.1',
+  'hubot-help' => '0.2.0',
+  'hubot-pugme' => '0.1.0',
+  'hubot-xkcd' => '0.0.3',
 }
 
-template '/etc/init.d/hubot' do
-  source 'sysvinit.erb'
-  mode '0755'
-  variables({
-    'pidfile'       => '/var/run/hubot',
-    'user'          => hubot_user,
-    'install_dir'   => hubot_dir,
-    'environment'   => hubot_environment,
-  })
-end
-
-# TODO: use systemd on Ubuntu 16
-service 'hubot' do
-  action [:enable, :start]
+hubot_instance 'hubot' do
+  action :create
+  external_scripts external_scripts
+  hubot_slack_token 'xoxb-YOUR-TOKEN-HERE'
 end

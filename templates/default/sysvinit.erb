@@ -24,7 +24,7 @@ do_start () {
       <%= variable %>='<%= value %>' \
       <% end -%>
       bin/hubot --name hubot_name --adapter slack >> "/var/log/hubot-stdout" 2>&1"
-    sleep 2
+    sleep 3
 
     ending_log_len=$(stat --format %s "/var/log/hubot-stdout")
     if [ "${ending_log_len}" -gt "${beginning_log_len}" ]; then
