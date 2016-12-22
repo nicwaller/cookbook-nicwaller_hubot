@@ -1,0 +1,68 @@
+#!/bin/sh
+
+### BEGIN INIT INFO
+# Provides:          hubot
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:     $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: hubot
+# Description:       hubot
+### END INIT INFO
+
+. /lib/lsb/init-functions
+
+do_start () {
+    [ -f "<%= @pidfile %>" ] && ps h --pid $(cat "<%= @pidfile %>") >/dev/null && log_warning_msg "hubot is already running" && exit 0
+    touch "/var/log/hubot-stdout" && chown "<%= @user %>" "/var/log/hubot-stdout"
+    beginning_log_len=$(stat --format %s "/var/log/hubot-stdout")
+    log_daemon_msg "Starting hubot"
+    /sbin/start-stop-daemon --start --background --pidfile "<%= @pidfile %>" --make-pidfile \
+      --user "<%= @user %>" --chuid "<%= @user %>" \
+      --chdir /opt/hubot --startas /bin/bash -- -c "exec env \
+      <% @environment.each do |variable,value| -%>
+      <%= variable %>='<%= value %>' \
+      <% end -%>
+      bin/hubot --name hubot_name --adapter slack >> "/var/log/hubot-stdout" 2>&1"
+    sleep 2
+
+    ending_log_len=$(stat --format %s "/var/log/hubot-stdout")
+    if [ "${ending_log_len}" -gt "${beginning_log_len}" ]; then
+        new_log_bytes=$(expr $ending_log_len - $beginning_log_len)
+        tail --bytes "$new_log_bytes" "/var/log/hubot-stdout" | tail --lines 8
+    fi
+    if [ -f "<%= @pidfile %>" ] && ps h --pid $(cat "<%= @pidfile %>") >/dev/null; then
+        log_success_msg "hubot survived"
+    else
+        log_failure_msg "hubot died" && exit 1
+    fi
+}
+
+do_stop () {
+    log_daemon_msg "Stopping system hubot daemon"
+    /sbin/start-stop-daemon --stop --pidfile "<%= @pidfile %>" --retry 10
+    [ -f "<%= @pidfile %>" ] && rm "<%= @pidfile %>"
+    log_end_msg $?
+}
+
+case "$1" in
+
+    start|stop)
+        do_${1}
+        ;;
+
+    restart|reload|force-reload)
+        do_stop
+        do_start
+        ;;
+
+    status)
+        status_of_proc "hubot" "${DAEMON}" && exit 0 || exit $?
+        ;;
+    *)
+        echo "Usage: /etc/init.d/hubot {start|stop|restart|status}"
+        exit 1
+        ;;
+
+esac
+exit 0
