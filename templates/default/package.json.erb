@@ -1,52 +1,16 @@
 {
-  "name": "hubot",
-  "version": "<%= @version %>",
-  "author": "hubot",
-  "keywords": [
-    "github",
-    "hubot",
-    "campfire",
-    "bot"
-  ],
+  "name": "hubot-instance",
+  "version": "0.0.1",
+  "private": true,
+  "author": "private",
   "description": "A simple helpful robot for your Company",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/github/hubot.git"
-  },
   "dependencies": {
-    <%- @dependencies.each_pair do |dependency, version| -%>
+    <%- @external_script_dependencies.each_pair do |dependency, version| -%>
     "<%= dependency %>": "<%= version %>",
     <%- end -%>
-    "hubot-slack": "4.2.2",
-    "async": ">=0.1.0 <1.0.0",
-    "chalk": "^1.0.0",
-    "cline": "^0.8.2",
-    "coffee-script": "1.6.3",
-    "connect-multiparty": "^1.2.5",
-    "express": "^3.21.2",
-    "log": "1.4.0",
-    "optparse": "1.0.4",
-    "scoped-http-client": "0.11.0"
-  },
-  "devDependencies": {
-    "hubot-mock-adapter": "^1.0.0",
-    "coffee-errors": "0.8.6",
-    "mocha": "^2.1.0",
-    "mockery": "^1.4.0",
-    "sinon-chai": "^2.8.0",
-    "sinon": "~1.17.0",
-    "chai": "~2.1.0"
-  },
-  "engines": {
-    "node": ">= 0.8.x",
-    "npm": ">= 1.1.x"
-  },
-  "main": "./index",
-  "bin": {
-    "hubot": "./bin/hubot"
-  },
-  "scripts": {
-    "test": "./script/test"
+    "coffee-script": "1.12.2",
+    "hubot": "2.19.0",
+    "hubot-hipchat": "2.12.0-6",
+    "hubot-slack": "4.3.0"
   }
 }

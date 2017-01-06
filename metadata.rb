@@ -6,7 +6,6 @@ description        'Installs/Configures hubot'
 long_description   'Installs/Configures hubot'
 issues_url         'https://github.com/nicwaller/cookbook-nicwaller_hubot/issues'
 source_url         'https://github.com/nicwaller/cookbook-nicwaller_hubot'
-version            '0.0.1'
+version            '0.1.0'
 
-depends 'git'
 depends 'nodejs'

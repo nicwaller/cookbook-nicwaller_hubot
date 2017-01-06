@@ -14,22 +14,24 @@
 
 do_start () {
     [ -f "<%= @pidfile %>" ] && ps h --pid $(cat "<%= @pidfile %>") >/dev/null && log_warning_msg "hubot is already running" && exit 0
-    touch "/var/log/hubot-stdout" && chown "<%= @user %>" "/var/log/hubot-stdout"
-    beginning_log_len=$(stat --format %s "/var/log/hubot-stdout")
+    touch "<%= @logfile %>" && chown "<%= @user %>" "<%= @logfile %>"
+    beginning_log_len=$(stat --format %s "<%= @logfile %>")
     log_daemon_msg "Starting hubot"
+    PATH="${PATH}:<%= @install_dir %>/node_modules/coffee-script/bin"
     /sbin/start-stop-daemon --start --background --pidfile "<%= @pidfile %>" --make-pidfile \
       --user "<%= @user %>" --chuid "<%= @user %>" \
-      --chdir /opt/hubot --startas /bin/bash -- -c "exec env \
+      --chdir <%= @install_dir %> --startas /bin/bash -- -c "exec env \
       <% @environment.each do |variable,value| -%>
       <%= variable %>='<%= value %>' \
       <% end -%>
-      bin/hubot --name hubot_name --adapter slack >> "/var/log/hubot-stdout" 2>&1"
+      node_modules/hubot/bin/hubot --name <%= @hubot_name %> --adapter <%= @adapter %> >> "<%= @logfile %>" 2>&1"
     sleep 3
 
-    ending_log_len=$(stat --format %s "/var/log/hubot-stdout")
+    ending_log_len=$(stat --format %s "<%= @logfile %>")
     if [ "${ending_log_len}" -gt "${beginning_log_len}" ]; then
         new_log_bytes=$(expr $ending_log_len - $beginning_log_len)
-        tail --bytes "$new_log_bytes" "/var/log/hubot-stdout" | tail --lines 8
+        echo "==>" <%= @logfile %> "<=="
+        tail --bytes "$new_log_bytes" "<%= @logfile %>" | tail --lines 40
     fi
     if [ -f "<%= @pidfile %>" ] && ps h --pid $(cat "<%= @pidfile %>") >/dev/null; then
         log_success_msg "hubot survived"
